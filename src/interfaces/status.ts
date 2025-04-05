@@ -12,3 +12,11 @@ export type GetStatusListResponse = {
   total: number
   items: IStatus[]
 }
+export type CreateStatusRequest = {
+  name: string
+  scheduleDuration: string
+}
+
+export type StatusForm = {
+  name: IStatus['name']
+}

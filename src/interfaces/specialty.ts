@@ -14,3 +14,7 @@ export type GetSpecialtyListResponse = {
   total: number
   items: ISpecialty[]
 }
+export type PutCreate = {
+  name: string
+  scheduleDuration: ISpecialty['scheduleDuration']
+}
