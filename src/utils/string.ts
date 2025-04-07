@@ -6,5 +6,5 @@ export const normalize = (text: string) => {
 }
 
 export const clearMask = (text: string) => {
-  return text.replace(/[\.,\,,\-,\\,\/,\(,\),\:]/g, '')
+  return text.replace(/[\.,\,,\-,\\,\/,\(,\), ,\:]/g, '')
 }

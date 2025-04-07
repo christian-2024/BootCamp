@@ -3,13 +3,15 @@ import { computed, onMounted, ref } from 'vue'
 import { DefaultTemplate } from '@/template'
 import { mdiCancel, mdiPlusCircle } from '@mdi/js'
 import type { PatientForm } from '@/interfaces/patient'
-import type { IPatient } from '@/interfaces/patient'
-
+import type { IPatient, GetPatientListResponse } from '@/interfaces/patient'
 import request from '@/engine/httpClient'
 import { useRoute } from 'vue-router'
 import { PageMode } from '@/enum'
 import { useToastStore } from '@/stores'
 import router from '@/router'
+import { vMaska } from 'maska/vue'
+import { documentNumberMask, phoneNumberMask, dateMask } from '@/utils'
+import { clearMask } from '@/utils/string'
 
 const toastStore = useToastStore()
 const route = useRoute()
@@ -33,12 +35,41 @@ const pageTitle = computed(() => {
   return pageMode === PageMode.PAGE_UPDATE ? 'Editar status' : 'Cadastrar novo paciente'
 })
 
+const loadFilters = async () => {
+  isLoadingFilter.value = true
+
+  try {
+    const statusResponse = await request<undefined, GetPatientListResponse>({
+      method: 'GET',
+      endpoint: 'status/list'
+    })
+
+    if (statusResponse.isError) return
+
+    statusItems.value = statusResponse.data.items
+  } catch (e) {
+    console.error('Erro ao buscar items do filtro', e)
+  }
+
+  isLoadingFilter.value = false
+}
+
 const submitForm = async () => {
   isLoadingForm.value = true
+
+  //form.value.documentNumber = clearMask(form.value.documentNumber)
+  //form.value.phoneNumber = clearMask(form.value.phoneNumber)
+
   const response = await request<PatientForm, null>({
     method: pageMode == PageMode.PAGE_INSERT ? 'POST' : 'PUT',
     endpoint: pageMode == PageMode.PAGE_INSERT ? 'patient/insert' : `patient/update/${id}`,
-    body: form.value
+    body: {
+      name: form.value.name,
+      statusId: filterStatusId.value,
+      documentNumber: clearMask(form.value.documentNumber),
+      phoneNumber: clearMask(form.value.phoneNumber),
+      birthDate: clearMask(form.value.birthDate)
+    }
   })
 
   if (response.isError) return
@@ -70,6 +101,7 @@ const loadForm = async () => {
 
 onMounted(() => {
   loadForm()
+  loadFilters()
 })
 </script>
 
@@ -106,7 +138,26 @@ onMounted(() => {
       </v-row>
       <v-row>
         <v-col cols="4">
-          <v-text-field v-model.trim="form.name" label="CPF" hide-details />
+          <v-text-field
+            v-model.trim="form.documentNumber"
+            v-maska="documentNumberMask"
+            label="CPF"
+            hide-details
+        /></v-col>
+        <v-col cols="4">
+          <v-text-field
+            v-model.trim="form.phoneNumber"
+            v-maska="phoneNumberMask"
+            label="Telefone"
+            hide-details
+          /> </v-col
+        ><v-col cols="4">
+          <v-text-field
+            v-model.trim="form.birthDate"
+            v-maska="dateMask"
+            label="Data"
+            hide-details
+          />
         </v-col>
       </v-row>
     </v-form>
