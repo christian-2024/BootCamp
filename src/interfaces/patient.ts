@@ -6,6 +6,7 @@ export interface IPatient {
   phoneNumber: string
   documentNumber: string
   statusId: number
+  status: IStatus
   birthDate: string
 }
 

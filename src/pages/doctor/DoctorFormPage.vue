@@ -2,61 +2,42 @@
 import { computed, onMounted, ref } from 'vue'
 import { DefaultTemplate } from '@/template'
 import { mdiCancel, mdiPlusCircle } from '@mdi/js'
-import type { PatientForm } from '@/interfaces/patient'
+import type { DoctorForm } from '@/interfaces/doctor'
 import type { IStatus, GetStatusListResponse } from '@/interfaces/status'
 import request from '@/engine/httpClient'
 import { useRoute } from 'vue-router'
 import { PageMode } from '@/enum'
 import { useToastStore } from '@/stores'
 import router from '@/router'
-import { vMaska } from 'maska/vue'
-import {
-  clearMask,
-  dateFormat,
-  DateFormatEnum,
-  dateMask,
-  documentNumberMask,
-  phoneNumberMask
-} from '@/utils'
+import type { ISpecialty } from '@/interfaces/specialty'
 
 const toastStore = useToastStore()
 const route = useRoute()
 const isLoadingForm = ref<boolean>(false)
+
 const statusItems = ref<IStatus[]>([])
+const specialtyItems = ref<ISpecialty[]>([])
 
 const id = route.params.id
 const pageMode = id ? PageMode.PAGE_UPDATE : PageMode.PAGE_INSERT
 
-const form = ref<PatientForm>({
+const form = ref<DoctorForm>({
   name: '',
-  documentNumber: '',
-  phoneNumber: '',
-  birthDate: '',
-  statusId: null
+  statusId: null,
+  specialty: []
 })
 
 const pageTitle = computed(() => {
-  return pageMode === PageMode.PAGE_UPDATE ? 'Editar status' : 'Cadastrar novo paciente'
+  return pageMode === PageMode.PAGE_UPDATE ? 'Editar status' : 'Cadastrar novo doutor'
 })
 
 const submitForm = async () => {
   isLoadingForm.value = true
 
-  const body = {
-    ...form.value,
-    documentNumber: clearMask(form.value.documentNumber),
-    phoneNumber: clearMask(form.value.phoneNumber),
-    birthDate: dateFormat(
-      form.value.birthDate,
-      DateFormatEnum.FullDateAmerican.value,
-      DateFormatEnum.FullDate.value
-    )
-  }
-
-  const response = await request<PatientForm, null>({
+  const response = await request<DoctorForm, null>({
     method: pageMode == PageMode.PAGE_INSERT ? 'POST' : 'PUT',
-    endpoint: pageMode == PageMode.PAGE_INSERT ? 'patient/insert' : `patient/update/${id}`,
-    body
+    endpoint: pageMode == PageMode.PAGE_INSERT ? 'doctor/insert' : `doctor/update/${id}`,
+    body: form.value
   })
 
   if (response.isError) return
@@ -66,7 +47,7 @@ const submitForm = async () => {
     text: `Paciente ${pageMode == PageMode.PAGE_INSERT ? 'criado' : 'alterado'} com sucesso!`
   })
 
-  router.push({ name: 'patient-list' })
+  router.push({ name: 'doctor-list' })
   isLoadingForm.value = false
 }
 
@@ -80,22 +61,23 @@ const loadForm = async () => {
   const requests: Promise<any>[] = [statusRequest]
 
   if (pageMode === PageMode.PAGE_UPDATE) {
-    const patientFormRequest = request<undefined, PatientForm>({
+    const patientFormRequest = request<undefined, DoctorForm>({
       method: 'GET',
-      endpoint: `patient/listById/${id}`
+      endpoint: `doctor/listById/${id}`
     })
 
     requests.push(patientFormRequest)
   }
 
-  const [statusResponse, patientFormResponse] = await Promise.all(requests)
+  const [statusResponse, specialtyResponse, doctorFormResponse] = await Promise.all(requests)
 
-  if (statusResponse.isError || patientFormResponse?.isError) return
+  if (statusResponse.isError || doctorFormResponse?.isError || specialtyResponse.isError) return
 
   statusItems.value = statusResponse.data.items
+  specialtyItems.value = specialtyResponse.data.items
 
   if (pageMode === PageMode.PAGE_UPDATE) {
-    form.value = patientFormResponse.data
+    form.value = doctorFormResponse.data
   }
 
   isLoadingForm.value = false
@@ -139,27 +121,17 @@ onMounted(() => {
       </v-row>
       <v-row>
         <v-col cols="4">
-          <v-text-field
-            v-model.trim="form.documentNumber"
-            v-maska="documentNumberMask"
-            label="CPF"
+          <v-select
+            v-model="form.specialty"
+            label="Especialidade"
+            :loading="isLoadingForm"
+            :items="specialtyItems"
+            item-value="id"
+            item-title="name"
+            multiple
+            clearable
             hide-details
         /></v-col>
-        <v-col cols="4">
-          <v-text-field
-            v-model.trim="form.phoneNumber"
-            v-maska="phoneNumberMask"
-            label="Telefone"
-            hide-details
-          /> </v-col
-        ><v-col cols="4">
-          <v-text-field
-            v-model.trim="form.birthDate"
-            v-maska="dateMask"
-            label="Data"
-            hide-details
-          />
-        </v-col>
       </v-row>
     </v-form>
   </default-template>
